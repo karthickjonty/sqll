@@ -1,35 +1,51 @@
-package com.example.sqll;
 
-import android.app.Activity;
-import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuItem;
+package com.example.contacts;
+ 
+import java.util.ArrayList;
 
+import android.content.ContentProviderOperation;
+ import android.content.ContentResolver;
+import android.content.OperationApplicationException;
+ import android.database.Cursor;
+import android.os.RemoteException;
+ import android.provider.ContactsContract;
+import android.provider.ContactsContract.CommonDataKinds.Phone;
+import android.provider.ContactsContract.RawContacts;
+ 
+ public class ContactHelper {
+ 	public static Cursor getContactCursor(ContentResolver contactHelper, String startsWith) {
+ @@ -23,4 +30,34 @@ public static Cursor getContactCursor(ContentResolver contactHelper, String star
+ 	    }
+ 	    return cur;
+ 	}
+	public static boolean insertContact(ContentResolver contactAdder, String firstName, String mobileNumber) {
+	    ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+	    ops.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI).withValue(ContactsContract.RawContacts.ACCOUNT_TYPE, null).withValue(ContactsContract.RawContacts.ACCOUNT_NAME, null).build());
+	    
+	    ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME,firstName).build());
+	    
+	    ops.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI).withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0).withValue(ContactsContract.Data.MIMETYPE,ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE).withValue(ContactsContract.CommonDataKinds.Phone.NUMBER,mobileNumber).withValue(ContactsContract.CommonDataKinds.Phone.TYPE,Phone.TYPE_MOBILE).build());
 
-public class MainActivity extends Activity {
+	    try {
+	        contactAdder.applyBatch(ContactsContract.AUTHORITY, ops);
+	    } catch (Exception e) {
+	    return false;
+	    }
+	return true;
+	}
+	public static void deleteContact(ContentResolver contactHelper, String number) {
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-    }
+	    ArrayList<ContentProviderOperation> ops = new ArrayList<ContentProviderOperation>();
+	    String[] args = new String[] { String.valueOf(getContactCursor(contactHelper, number)) };
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
-    }
+	    ops.add(ContentProviderOperation.newDelete(RawContacts.CONTENT_URI).withSelection(RawContacts.CONTACT_ID + "=?", args).build());
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_settings) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-}
+	    try {
+	        contactHelper.applyBatch(ContactsContract.AUTHORITY, ops);
+	    } catch (RemoteException e) {
+	        e.printStackTrace();
+	    } catch (OperationApplicationException e) {
+	        e.printStackTrace();
+	    }
+	}
+ }
